@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>끝말잇기 앱</title>
+    <style>
+      body {
+        display: flex; /* 본문과 사이드바를 가로로 나열 */
+        margin: 0;
+        height: 100vh; /* 전체 뷰포트 높이 */
+      }
+      .main-content {
+        flex-grow: 1; /* 나머지 공간을 모두 차지 */
+        background-color: #fff;
+        padding: 20px;
+        box-shadow: -1px 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .sidebar {
+        width: 200px; /* 사이드바 폭 설정 */
+        background-color: #f4f4f4;
+        padding: 20px;
+        overflow-y: auto; /* 내용이 많을 경우 스크롤 */
+      }
+      .user-list {
+        list-style: none;
+        padding: 0;
+      }
+      .user-list li {
+        background-color: #f9f9f9;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+      }
+      .user-list li:hover {
+        transform: translateY(-5px);
+        cursor: pointer;
+      }
+      ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      li {
+        padding: 8px;
+        margin-bottom: 2px;
+        background-color: #f3f3f3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-content">
+      <div id="info"></div>
+      <ul id="messages"></ul>
+      <form id="form" action=""><input id="input" autocomplete="off" /><button>Send</button></form>
+      <button id="start">START</button>
+    </div>
+    <div class="sidebar">
+      <h3 id="my-user-id"></h3>
+      <h3 id="current-turn"></h3>
+      <h2>유저 목록</h2>
+      <ul id="user-list" class="user-list"></ul>
+    </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      const socket = io();
+
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const startButton = document.getElementById("start");
+      const gameUsers = [];
+      const messages = [];
+      let gameTurn = 0;
+
+      socket.on("connect", function () {
+        console.log("Connected to the server.");
+        document.getElementById("my-user-id").innerText = `당신의 유저ID : ${socket.id}`;
+        addUser(socket.id);
+      });
+
+      function addUser(userId) {
+        gameUsers.push(userId);
+        var item = document.createElement("li");
+        item.textContent = userId;
+        item.setAttribute("user-id", userId);
+        document.getElementById("user-list").appendChild(item);
+      }
+
+      function delUser(userId) {
+        const item = document.querySelector(`li[user-id="${userId}"]`);
+        gameUsers.splice(
+          gameUsers.findIndex((v) => v == userId),
+          1
+        );
+        item.remove();
+      }
+
+      function changeTurn(turn) {
+        gameTurn = turn;
+        document.getElementById("current-turn").innerText = `현재 턴 : ${gameUsers[gameTurn]}`;
+      }
+
+      fetch("/info")
+        .then((response) => response.json())
+        .then(({ started, messages, users, turn }) => {
+          document.getElementById("info").textContent = started ? "시작함" : "준비중";
+          for (const [userId, message] of messages) {
+            var item = document.createElement("li");
+            item.textContent = `${userId} : ${message}`;
+            document.getElementById("messages").appendChild(item);
+          }
+          for (const user of users) {
+            addUser(user);
+          }
+          gameTurn = turn;
+        })
+        .catch((error) => {
+          document.getElementById("info").textContent = "getInfo failed";
+          console.error("Error fetching data: ", error);
+        });
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (input.value) {
+          socket.emit("message", input.value);
+          input.value = "";
+        }
+      });
+
+      startButton.addEventListener("click", () => {
+        socket.emit("start");
+      });
+
+      socket.on("message", function ({ userId, message, turn }) {
+        messages.push([userId, message]);
+        var item = document.createElement("li");
+        item.textContent = `${userId} : ${message}`;
+        document.getElementById("messages").appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+        changeTurn(turn);
+      });
+
+      socket.on("start", function ({ turn }) {
+        document.getElementById("info").textContent = "시작함";
+        changeTurn(turn);
+      });
+
+      socket.on("info", function (msg) {
+        alert(msg);
+      });
+
+      socket.on("addMem", function (member) {
+        addUser(member);
+      });
+
+      socket.on("delMem", function (member) {
+        delUser(member);
+      });
+    </script>
+  </body>
+</html>
