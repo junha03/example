@@ -28,10 +28,8 @@ async function wordCheck(word, callback) {
                 let w;
                 if(result.channel.item[0] !== undefined) {
                     w = result.channel.item[0].word;
-                    console.log(w)
                 } else {
                     w = result.channel.item.word;
-                    console.log(w)
                 }
                 if(w === word) {
                     //console.log(true)
