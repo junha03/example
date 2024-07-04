@@ -5,6 +5,8 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "request": "^2.88.2",
+    "socket.io": "^4.7.5",
+    "xml2js": "^0.6.2"
   }
 }
